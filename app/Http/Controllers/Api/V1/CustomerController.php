@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\V1\CustomerCollection;
-use App\Http\Resources\V1\CustomerResource;
 use App\Models\Customer;
-use App\Services\V1\CustomerQuery;
 use Illuminate\Http\Request;
+use App\Filters\V1\CustomerQuery;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\StoreCustomerRequest;
+use App\Http\Resources\V1\CustomerResource;
+use App\Http\Resources\V1\CustomerCollection;
 
 class CustomerController extends Controller
 {
@@ -19,27 +20,23 @@ class CustomerController extends Controller
         $filter = new CustomerQuery();
         $queryItems = $filter->transform($request);
         // dd($queryItems);
-        if (count($queryItems) == 0) {
-            return new CustomerCollection(Customer::paginate(10));
-        } else {
-            return new CustomerCollection(Customer::where($queryItems)->paginate(10));
-        }
-    }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
+        $invoice_query = $request->query('includesInvoices');
+        // dd($queryItems);
+        $customer = Customer::where($queryItems);
+        if ($invoice_query) {
+            $customer = $customer->with('invoices');
+        }
+
+        return new CustomerCollection($customer->paginate(10)->appends($request->query()));
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreCustomerRequest $request)
     {
-        //
+        return new CustomerResource(Customer::create($request->all()));
     }
 
     /**
@@ -47,6 +44,11 @@ class CustomerController extends Controller
      */
     public function show(Customer $customer)
     {
+        $includeInvoice = Request()->query('includesInvoices');
+        // dd($includeInvoice);
+        if ($includeInvoice) {
+            $customer = $customer->loadMissing('invoices');
+        }
         return new CustomerResource($customer);
     }
 
@@ -61,9 +63,9 @@ class CustomerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(StoreCustomerRequest $request, Customer $customer)
     {
-        //
+        return $customer->update($request->all());
     }
 
     /**
