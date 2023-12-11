@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Filters\V1\InvoiceQuery;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\StoreBulkInvoieRequest;
 use App\Http\Resources\V1\InvoiceCollection;
 use App\Http\Resources\V1\InvoiceResource;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class InvoiceController extends Controller
 {
@@ -20,7 +22,7 @@ class InvoiceController extends Controller
         $queryItems = $filter->transform($request);
         // dd($queryItems);
         if (count($queryItems) == 0) {
-            return new InvoiceCollection(Invoice::paginate(10));
+            return new InvoiceCollection(Invoice::latest()->paginate(10));
         } else {
             $invoice = Invoice::where($queryItems)->paginate(10);
             return new InvoiceCollection($invoice->appends($request->query()));
@@ -41,6 +43,14 @@ class InvoiceController extends Controller
     public function store(Request $request)
     {
         //
+    }
+
+    public function bulkInvoie(StoreBulkInvoieRequest $request)
+    {
+        $bulk = collect($request->all())->map(function ($arr, $key) {
+            return Arr::except($arr, ['customerId', 'billedDate', 'paidDate']);
+        });
+        return Invoice::insert($bulk->toArray());
     }
 
     /**
